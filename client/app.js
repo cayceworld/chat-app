@@ -5,18 +5,28 @@ const messagesList = document.getElementById('messages-list');
 const addMessageForm = document.getElementById('add-messages-form');
 const userNameInput = document.getElementById('username');
 const messageContentInput = document.getElementById('message-content');
-
-console.log(loginForm);
-
 let userName;
+
+// initiation Socket.IO
+const socket = io();
+socket.connect("http://lilcayce.com");
+
+// add listener on event message 
+//socket.on('message', addMessage);
+//socket.on('message', (event) => addMessage(event.author, event.content));
+socket.on('message', ({ author, content }) => addMessage(author, content)); // shirt version of code above
+socket.on('logIn', ({ author, name }) => addMessage(author, `<i>${name} has joined the conversation!</i>`));
+socket.on('logOut', ({ author, name }) => addMessage(author, `<i>${name} has left the conversation... :(</i>`));
+
+
 
 function addMessage(author, content) {
   const message = document.createElement('li');
   message.classList.add('message');
   message.classList.add('message--received');
-  if(author === userName) message.classList.add('message--self');
+  if (author === userName) message.classList.add('message--self');
   message.innerHTML = `
-    <h3 class="message__author">${userName === author ? 'You' : author }</h3>
+    <h3 class="message__author">${userName === author ? 'You' : author}</h3>
     <div class="message__content">
       ${content}
     </div>
@@ -24,13 +34,11 @@ function addMessage(author, content) {
   messagesList.appendChild(message);
 }
 
-
-
 loginForm.addEventListener('submit', function login(e) {
   e.preventDefault();
-  console.log('click');
 
-  console.log(userNameInput.value);
+  userName = userNameInput.value;
+  console.log('userName:', userName);
 
   if (userNameInput.value === '') {
     alert('please enter your name')
@@ -38,6 +46,7 @@ loginForm.addEventListener('submit', function login(e) {
     userName = userNameInput.value;
     loginForm.classList.remove('show');
     messagesSection.classList.add('show');
+    socket.emit('logIn', { name: userName });
   }
 
 })
@@ -45,10 +54,17 @@ loginForm.addEventListener('submit', function login(e) {
 addMessageForm.addEventListener('submit', function sendMessage(e) {
   e.preventDefault();
 
-  if (messageContentInput.value === '') {
-    alert('please enter your message')
-  } else {
-    addMessage(userName, messageContentInput.value);
-    messageContentInput.value = ('');
+  let messageContent = messageContentInput.value;
+
+  if (!messageContent.length) {
+    alert('You have to type something!');
+  }
+  else {
+    addMessage(userName, messageContent);
+
+    // add emitter for message action
+    socket.emit('message', { author: userName, content: messageContent })
+    messageContentInput.value = '';
   }
 })
+
